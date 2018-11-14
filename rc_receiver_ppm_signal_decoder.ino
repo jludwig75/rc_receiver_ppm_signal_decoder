@@ -1,63 +1,54 @@
+#include <BricktronicsMotor.h>
+#include "NxtVehicle.h"
+#include "RemoteControl.h"
+#include "RCVehicle.h"
 
-const byte channel_1_interrupt_pin = 2;
-const byte channel_2_interrupt_pin = 3;
+const byte steering_channel_interrupt_pin = 3;
+const byte drive_channel_interrupt_pin = 2;
 
 
-class PpmInputSignal
-{
-  public:
-    PpmInputSignal(byte signal_pin) : _signal_pin(signal_pin), _last_channel_rise_time(micros()), _channel_high_time(1500)
-    {
-      
-    }
-    void on_change_interrupt()
-    {
-      if (digitalRead(_signal_pin) == HIGH)
-      {
-        _last_channel_rise_time = micros();
-      }
-      else
-      {
-        _channel_high_time = micros() - _last_channel_rise_time;
-      }
-    }
-    unsigned long channel_high_time() const
-    {
-      return _channel_high_time;
-    }
-  private:
-    byte _signal_pin;
-    volatile unsigned long _last_channel_rise_time;
-    volatile unsigned long _channel_high_time;
-};
+byte motor1_enPin = 4;
+byte motor1_dirPin = 5;
+byte motor1_pwmPin = 6;
+byte motor1_encoderPin1 = 7;
+byte motor1_encoderPin2 = 8;
 
-PpmInputSignal channel_1_signal(channel_1_interrupt_pin);
-PpmInputSignal channel_2_signal(channel_2_interrupt_pin);
+byte motor2_enPin = 9;
+byte motor2_dirPin = 10;
+byte motor2_pwmPin = 11;
+byte motor2_encoderPin1 = 12;
+byte motor2_encoderPin2 = 13;
 
-void channel_1_isr() {
-  channel_1_signal.on_change_interrupt();
-}
+byte steering_mode_pin = A2;
+byte center_steering_pin = A1;
+byte steering_seinsitivity_pin = A0;
 
-void channel_2_isr() {
-  channel_2_signal.on_change_interrupt();
-}
+BricktronicsMotor motor1(motor1_enPin, motor1_dirPin, motor1_pwmPin, motor1_encoderPin1, motor1_encoderPin2);
+BricktronicsMotor motor2(motor2_enPin, motor2_dirPin, motor2_pwmPin, motor2_encoderPin1, motor2_encoderPin2);
 
+NxtVehicle vehicle(&motor2, &motor1, steering_mode_pin, center_steering_pin, steering_seinsitivity_pin);
+
+RemoteControl remote_control(drive_channel_interrupt_pin, steering_channel_interrupt_pin);
+
+RCVehicle rc_vehicle(&vehicle, &remote_control);
 
 void setup() {
   Serial.begin(9600);
-  
-  pinMode(channel_1_interrupt_pin, INPUT);
-  pinMode(channel_2_interrupt_pin, INPUT);
+  Serial.println("Starting NXT ESC...\n");
 
-  attachInterrupt(digitalPinToInterrupt(channel_1_interrupt_pin), channel_1_isr, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(channel_2_interrupt_pin), channel_2_isr, CHANGE);
+  if (rc_vehicle.begin())
+  {
+    Serial.println("NXT ESC ready.\n");
+  }
+  else
+  {
+    Serial.println("Failed to start NXT ESC.\n");
+  }
+
 }
 
+long last_power_value = 0;
+
 void loop() {
-  // put your main code here, to run repeatedly:
-  Serial.print("Channel 1:");
-  Serial.print(channel_1_signal.channel_high_time());
-  Serial.print("Channel 2:");
-  Serial.println(channel_2_signal.channel_high_time());
-  delay(500);
+  rc_vehicle.on_loop();
 }
