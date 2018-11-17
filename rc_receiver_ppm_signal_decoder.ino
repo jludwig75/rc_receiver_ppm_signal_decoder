@@ -44,7 +44,6 @@ void setup() {
   {
     Serial.println("Failed to start NXT ESC.\n");
   }
-
 }
 
 long last_power_value = 0;
